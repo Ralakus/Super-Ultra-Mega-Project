@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="author" content="Super Ultra Mega Team">
+
+    <title>Super Ultra Mega Team</title>
+
+    <script defer src="/static/js/alpine-3.14.1.js"></script>
+    <script src="/index.js"></script>
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+
+<body x-data="global" class="sm:flex sm:flex-col sm:h-screen">
+    <main class="sm:flex sm:flex-grow">
+        <div class="flex flex-col m-auto text-center justify-center space-y-2">
+            <h1 class="h-full w-full flex flex-grow space-x-4">
+                <span class="text-6xl invisible" :class="{'display-super !visible': displaySuper}">Super</span>
+                <span class="text-6xl invisible" :class="{'display-ultra !visible': displayUltra}">Ultra</span>
+                <span class="text-6xl invisible" :class="{'display-mega !visible': displayMega}">Mega</span>
+                <span class="text-6xl invisible" :class="{'display-team !visible': displayTeam}">Team</span>
+            </h1>
+            <hr class="mt-6 mb-2 invisible" :class="{'display-underline !visible': displayHeaderFinished}">
+            <p class="text-4xl invisible" :class="{'display-underline !visible': displayHeaderFinished}">Leaders of Innovation</p>
+        </div>
+    </main>
+</body>
+
+</html>

@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+[x-cloak] {
+    display: none !important;
+}
+
+.display-super {
+    animation-duration: 500ms;
+    animation-name: display-super;
+}
+
+@keyframes display-super {
+    from {
+        opacity: 0;
+        translate: -50vw 0;
+        scale: 200% 1;
+    }
+
+    to {
+        opacity: 1;
+        translate: 0 0;
+        scale: 100% 1;
+    }
+}
+
+.display-ultra {
+    animation-duration: 500ms;
+    animation-name: display-ultra;
+}
+
+@keyframes display-ultra {
+    from {
+        opacity: 0;
+        translate: 0 -50vh;
+        scale: 200% 1;
+    }
+
+    to {
+        opacity: 1;
+        translate: 0 0;
+        scale: 100% 1;
+    }
+}
+
+.display-mega {
+    animation-duration: 500ms;
+    animation-name: display-mega;
+}
+
+@keyframes display-mega {
+    from {
+        opacity: 0;
+        translate: 0 150vh;
+        scale: 200% 1;
+    }
+
+    to {
+        opacity: 1;
+        translate: 0 0;
+        scale: 100% 1;
+    }
+}
+
+.display-team {
+    animation-duration: 500ms;
+    animation-name: display-team;
+}
+
+@keyframes display-team {
+    from {
+        opacity: 0;
+        translate: 150vw 0;
+        scale: 200% 1;
+    }
+
+    to {
+        opacity: 1;
+        translate: 0 0;
+        scale: 100% 1;
+    }
+}
+
+.display-underline {
+    animation-duration: 500ms;
+    animation-name: display-underline;
+}
+
+@keyframes display-underline {
+    from {
+        opacity: 0;
+        scale: 0% 1;
+    }
+
+    to {
+        opacity: 1;
+        scale: 100% 1;
+    }
+}
