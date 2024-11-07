@@ -1,2 +1,3 @@
-/target
-/static/css/style.css
+.ruff_cache
+.venv
+**/__pycache__

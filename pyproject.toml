@@ -1,0 +1,26 @@
+[tool.black]
+line-length = 120
+skip-string-normalization = true
+
+[tool.ruff]
+
+select = ["ALL"]
+ignore = ["BLE001", "D205", "D400", "D406", "D407", "D413", "FA100", "N999", "Q003", "T201", "TID252"]
+
+fixable = ["ALL"]
+unfixable = []
+
+exclude = [
+    ".conda",
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    ".vscode"
+]
+line-length = 120
+
+dummy-variable-rgx = "^(_+|(_+([a-zA-Z0-9]*[a-zA-Z0-9]+?)))$"
+target-version = "py312"
+
+[tool.ruff.mccabe]
+max-complexity = 20
