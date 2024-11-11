@@ -50,6 +50,7 @@ class Item(BaseModel):
     constraints: list[Constraint]
     fixed: bool
     """If object can be moved by model."""
+    orientation: Orientation
 
 
 class Room(BaseModel):
@@ -85,6 +86,13 @@ def is_item_position_constrained(item: Item, constraint: PositionConstraint) -> 
     Returns:
         bool: if item complies with constraint
     """
+    if item.orientation != Orientation.HORIZONTAL:
+        x = item.bounds.x
+        y = item.bounds.y
+
+        item.bounds.x = y
+        item.bounds.y = x
+
     item_lower_bound: CoordinatePair = CoordinatePair(
         x=item.origin.x - item.bounds.x / 2,
         y=item.origin.y - item.bounds.y / 2,
@@ -101,6 +109,13 @@ def is_item_position_constrained(item: Item, constraint: PositionConstraint) -> 
     within_upper_bounds: bool = (
         item_upper_bound.x >= constraint.upper_bound.x and item_upper_bound.y >= constraint.upper_bound.y
     )
+
+    if item.orientation != Orientation.HORIZONTAL:
+        x = item.bounds.x
+        y = item.bounds.y
+
+        item.bounds.x = y
+        item.bounds.y = x
 
     return within_lower_bounds and within_upper_bounds
 
