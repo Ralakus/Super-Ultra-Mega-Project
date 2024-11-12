@@ -4,7 +4,7 @@ import math
 from enum import IntEnum
 
 from pydantic import BaseModel, Field
-from torch import Tensor, clamp
+from torch import Tensor
 
 
 class CoordinatePair(BaseModel):
