@@ -19,7 +19,7 @@ exclude = [
 ]
 line-length = 120
 
-dummy-variable-rgx = "^(_+|(_+([a-zA-Z0-9]*[a-zA-Z0-9]+?)))$"
+dummy-variable-rgx = "^(_+|_+([a-zA-Z0-9]*[a-zA-Z0-9_]+?))$"
 target-version = "py312"
 
 [tool.ruff.mccabe]

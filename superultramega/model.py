@@ -1,35 +1,42 @@
 """Torch model and evolutionary training."""
 
+import statistics
 from copy import deepcopy
-from dataclasses import dataclass
+from typing import Final
 
 import torch
 from torch import Tensor, nn
 
+from .map import Room
+from .score import score_room
+from .traversal_graph import Graph
 
-@dataclass
+HIDDEN_LAYER_SPAN_MULTIPLIER: Final[int] = 4
+"""Mulplier for number of hidden layers relative to the vector span of the room map."""
+
+
 class Model:
     """Torch model used to perform gradient descent optimization."""
 
     linear1: nn.Linear
     activation: nn.ReLU
     linear2: nn.Linear
-    softmax: nn.Softmax
+    hidden_parameter_count: int
 
-    def __init__(self, input_count: int, output_count: int) -> None:
+    def __init__(self, input_count: int, output_count: int, hidden_parameter_count: int) -> None:
         """Create randomly assigned model.
 
         Args:
             input_count (int): number of input parameters
             output_count (int): number of output parameters
+            hidden_parameter_count (int): number of parameters in hidden layers
         """
-        self.linear1 = nn.Linear(input_count, input_count)
+        self.linear1 = nn.Linear(input_count, hidden_parameter_count)
         self.activation = nn.ReLU()
-        self.linear2 = nn.Linear(input_count, output_count)
-        self.softmax = nn.Softmax(output_count)
+        self.linear2 = nn.Linear(hidden_parameter_count, output_count)
 
     def reproduce(self, entropy: float) -> "Model":
-        """Create new model variant of current model.
+        """Create changed new model from current model.
 
         Args:
             entropy (float): entropy value to adjust parameters.
@@ -57,23 +64,85 @@ class Model:
         """
         x = self.linear1(x)
         x = self.activation(x)
-        x = self.linear2(x)
-        return self.softmax(x)
+        return self.linear2(x)
 
 
-@dataclass
 class GeneticSimulation:
     """Wrapper to hold simulation state."""
 
-    models: list[Model]
+    models: list[Model | None]
+    input_tensors: list[Tensor]
+    output_rooms: list[Room]
+    scores: list[float]
+    keep_mask: list[bool]
     entropy: float
     iterations: int
+    room: Room
 
-    def iterate(self) -> list[Tensor]:
+    def __init__(self, room: Room, entropy: float, number_of_models: int) -> None:
+        """Create new simulation of room.
+
+        Args:
+            room (Room): room
+            entropy (float): starting entropy
+            number_of_models (int): number of models to run simulation with
+        """
+        # Create input tensor from vectorized room data
+        span: int = sum(item.vector_span() for item in room.items)
+        input_tensor: Tensor = torch.zeros(span)
+        room.vectorize(input_tensor)
+
+        self.entropy = entropy
+        self.models = [Model(span, span, span * HIDDEN_LAYER_SPAN_MULTIPLIER) for _i in range(number_of_models)]
+        self.input_tensors: list[Tensor] = [input_tensor.clone().detach() for _i in range(number_of_models)]
+        self.output_rooms = [deepcopy(room) for _i in range(number_of_models)]
+        self.scores = [0.0] * number_of_models
+        self.keep_mask = [False] * number_of_models
+
+    def iterate(self) -> tuple[float, float, float]:
         """Perform one iteration of the simulation.
 
         Returns:
-            list[Tensor]: list of outputs from models
+            tuple[float, float, float]: The highest, average, and median scores
         """
         self.iterations += 1
-        return []
+
+        # First pass to score models
+        for i, (model, input_tensor, output_room) in enumerate(
+            zip(
+                self.models,
+                self.input_tensors,
+                self.output_rooms,
+                strict=True,
+            ),
+        ):
+            if model is None:
+                continue
+
+            output_room.devectorize(model.forward(input_tensor))
+            self.scores[i] = score_room(output_room, Graph(name="", paths=[]))
+
+        # In place sort by scores from greatest to least score
+        self.models, self.input_tensors, self.output_rooms, self.scores = zip(
+            *sorted(
+                zip(self.models, self.input_tensors, self.output_rooms, self.scores, strict=True),
+                key=lambda x: x[3],
+                reverse=True,
+            ),
+            strict=True,
+        )
+
+        # Replace the second half of the models with derivatives of the highest scoring half
+        midpoint: int = len(self.models) // 2
+        for i in range(midpoint):
+            survior: Model | None = self.models[i]
+            if survior is None:
+                continue
+
+            self.models[midpoint + i] = survior.reproduce(self.entropy)
+
+        # Replace the lastmost model if there is an odd amount of number of models
+        if len(self.models) % 2 != 0 and self.models[0] is not None:
+            self.models[-1] = self.models[0].reproduce(self.entropy)
+
+        return (max(self.scores), statistics.mean(self.scores), statistics.median(self.scores))

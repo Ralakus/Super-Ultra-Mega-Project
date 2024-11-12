@@ -4,6 +4,7 @@ import math
 from enum import IntEnum
 
 from pydantic import BaseModel, Field
+from torch import Tensor
 
 
 class CoordinatePair(BaseModel):
@@ -52,6 +53,105 @@ class Item(BaseModel):
     """If object can be moved by model."""
     orientation: Orientation
 
+    def vector_span(self) -> int:
+        """Get the vector span of item.
+
+        Fixed items have zero span.
+
+        Returns:
+            int: number of elements in vector
+        """
+        if self.fixed:
+            return 0
+
+        # Span is determined by:
+        # * bounds
+        # * origin
+        # * orientation
+        span: int = 5
+        for constraint in self.constraints:
+            if isinstance(constraint, PositionConstraint):
+                span += 4
+
+            if isinstance(constraint, RadiusConstraint):
+                span += 3
+
+        return span
+
+    def vectorize(self, index: int, tensor: Tensor) -> None:
+        """Vectorize item at index in tensor.
+
+        If item is fixed in place, it will not be added to tensor.
+
+        Args:
+            index (int): index to insert at
+            tensor (Tensor): tensor to insert into
+        """
+        if self.fixed:
+            return
+
+        tensor[index + 0] = self.bounds.x
+        tensor[index + 1] = self.bounds.y
+        tensor[index + 2] = self.origin.x
+        tensor[index + 3] = self.origin.y
+        tensor[index + 4] = float(self.orientation)
+
+        # Offset index to end of header
+        index += 5
+
+        for constraint in self.constraints:
+            if isinstance(constraint, PositionConstraint):
+                tensor[index + 0] = constraint.lower_bound.x
+                tensor[index + 1] = constraint.lower_bound.y
+                tensor[index + 2] = constraint.upper_bound.x
+                tensor[index + 3] = constraint.upper_bound.y
+
+                index += 4
+
+            if isinstance(constraint, RadiusConstraint):
+                tensor[index + 0] = constraint.origin.x
+                tensor[index + 1] = constraint.origin.y
+                tensor[index + 2] = constraint.radius
+
+                index += 3
+
+    def devectorize(self, index: int, tensor: Tensor) -> None:
+        """Update item with values in vector.
+
+        Fixed items are unchanged.
+
+        Args:
+            index (int): index to read from
+            tensor (Tensor): tensor
+        """
+        if self.fixed:
+            return
+
+        self.bounds.x = tensor[index + 0].item()
+        self.bounds.y = tensor[index + 1].item()
+        self.origin.x = tensor[index + 2].item()
+        self.origin.y = tensor[index + 3].item()
+        self.orientation = Orientation(int(tensor[index + 4].item()))
+
+        # Offset index to end of header
+        index += 5
+
+        for constraint in self.constraints:
+            if isinstance(constraint, PositionConstraint):
+                constraint.lower_bound.x = tensor[index + 0].item()
+                constraint.lower_bound.y = tensor[index + 1].item()
+                constraint.upper_bound.x = tensor[index + 2].item()
+                constraint.upper_bound.y = tensor[index + 3].item()
+
+                index += 4
+
+            if isinstance(constraint, RadiusConstraint):
+                constraint.origin.x = tensor[index + 0].item()
+                constraint.origin.y = tensor[index + 1].item()
+                constraint.radius = tensor[index + 2].item()
+
+                index += 3
+
 
 class Room(BaseModel):
     """Room map."""
@@ -60,6 +160,36 @@ class Room(BaseModel):
     """Lower bound is assumed to be 0,0."""
 
     items: list[Item]
+
+    def vector_span(self) -> int:
+        """Get vector span of entire room.
+
+        Returns:
+            int: vector span
+        """
+        return sum(item.vector_span() for item in self.items)
+
+    def vectorize(self, tensor: Tensor) -> None:
+        """Vectorize data room into tensor.
+
+        Args:
+            tensor (Tensor): tensor to vectorize into
+        """
+        index: int = 0
+        for item in self.items:
+            item.vectorize(index, tensor)
+            index += item.vector_span()
+
+    def devectorize(self, tensor: Tensor) -> None:
+        """Update room with update vector tensor.
+
+        Args:
+            tensor (Tensor): tensor
+        """
+        index: int = 0
+        for item in self.items:
+            item.devectorize(index, tensor)
+            index += item.vector_span()
 
 
 def is_item_radius_constrained(item: Item, constraint: RadiusConstraint) -> bool:
