@@ -4,7 +4,7 @@ import math
 from enum import IntEnum
 
 from pydantic import BaseModel, Field
-from torch import Tensor
+from torch import Tensor, clamp
 
 
 class CoordinatePair(BaseModel):
@@ -131,7 +131,7 @@ class Item(BaseModel):
         self.bounds.y = tensor[index + 1].item()
         self.origin.x = tensor[index + 2].item()
         self.origin.y = tensor[index + 3].item()
-        self.orientation = Orientation(int(tensor[index + 4].item()))
+        self.orientation = Orientation(int(clamp(tensor[index + 4], min=Tensor([-1]), max=Tensor([1])).item()))
 
         # Offset index to end of header
         index += 5
