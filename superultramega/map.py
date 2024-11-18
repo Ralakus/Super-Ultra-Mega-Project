@@ -158,8 +158,9 @@ class Room(BaseModel):
 
     bounds: CoordinatePair
     """Lower bound is assumed to be 0,0."""
-
     items: list[Item]
+    keep_out_zones: list[PositionConstraint]
+    """Zones to avoid placing anything not fixed."""
 
     def vector_span(self) -> int:
         """Get vector span of entire room.
@@ -279,7 +280,7 @@ def is_item_constrained(item: Item) -> bool:
         # Unreachable code intentional to avoid lint warnings
         return False
 
-    return all(is_constrained(item, constraint) for constraint in item.constraints)
+    return any(is_constrained(item, constraint) for constraint in item.constraints)
 
 
 def is_room_constrained(room: Room) -> bool:
@@ -291,4 +292,7 @@ def is_room_constrained(room: Room) -> bool:
     Returns:
         bool: if all items complies with constraints
     """
-    return all(is_item_constrained(item) for item in room.items)
+    return all(is_item_constrained(item) for item in room.items) and all(
+        all(not is_item_position_constrained(item, keep_out) for item in room.items)
+        for keep_out in room.keep_out_zones
+    )
