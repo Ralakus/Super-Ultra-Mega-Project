@@ -8,6 +8,7 @@ import torch
 from torch import Tensor, nn
 
 from .map import Room
+from .nudge import nudge
 from .score import score_room
 from .traversal_graph import Graph
 
@@ -129,6 +130,9 @@ class GeneticSimulation:
                 continue
 
             output_room.devectorize(model.forward(input_tensor))
+            for item in output_room.items:
+                item.origin = nudge(output_room, item.name)
+
             self.scores[i] = score_room(output_room, Graph(name="", paths=[]))
 
         # In place sort by scores from greatest to least score
