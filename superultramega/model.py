@@ -81,11 +81,19 @@ class GeneticSimulation:
     output_rooms: list[Room]
     scores: list[float]
     keep_mask: list[bool]
+    traversal_graphs: list[Graph]
     entropy: float
     iterations: int
     room: Room
 
-    def __init__(self, room: Room, entropy: float, number_of_models: int, model_hidden_layers: int) -> None:
+    def __init__(
+        self,
+        room: Room,
+        entropy: float,
+        number_of_models: int,
+        model_hidden_layers: int,
+        traversal_graphs: list[Graph],
+    ) -> None:
         """Create new simulation of room.
 
         Args:
@@ -93,12 +101,14 @@ class GeneticSimulation:
             entropy (float): starting entropy
             number_of_models (int): number of models to run simulation with
             model_hidden_layers (int): number of hidden layers per model
+            traversal_graphs (list[Graph]): traversal graphs to score models
         """
         # Create input tensor from vectorized room data
         span: int = sum(item.vector_span() for item in room.items)
         input_tensor: Tensor = torch.zeros(span)
         room.vectorize(input_tensor)
 
+        self.traversal_graphs = traversal_graphs
         self.entropy = entropy
         self.models = [
             Model(span, span, model_hidden_layers, span * HIDDEN_LAYER_SPAN_MULTIPLIER)
@@ -133,7 +143,9 @@ class GeneticSimulation:
             for item in output_room.items:
                 item.origin = nudge(output_room, item.name)
 
-            self.scores[i] = score_room(output_room, Graph(name="", paths=[]))
+            self.scores[i] = sum(score_room(output_room, graph) for graph in self.traversal_graphs) / len(
+                self.traversal_graphs,
+            )
 
         # In place sort by scores from greatest to least score
         self.models, self.input_tensors, self.output_rooms, self.scores = zip(
