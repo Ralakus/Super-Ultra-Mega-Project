@@ -123,7 +123,7 @@ class GeneticSimulation:
         """Perform one iteration of the simulation.
 
         Returns:
-            tuple[float, float, float, int]: The highest, average, median scores, and index of highest scoring model
+            tuple[float, float, float, int]: The best, average, median scores, and index of best scoring model
         """
         self.iterations += 1
 
@@ -147,17 +147,17 @@ class GeneticSimulation:
                 self.traversal_graphs,
             )
 
-        # In place sort by scores from greatest to least score
+        # In place sort by scores from least to greatest score
         self.models, self.input_tensors, self.output_rooms, self.scores = zip(
             *sorted(
                 zip(self.models, self.input_tensors, self.output_rooms, self.scores, strict=True),
                 key=lambda x: x[3],
-                reverse=True,
+                reverse=False,
             ),
             strict=True,
         )
 
-        # Replace the second half of the models with derivatives of the highest scoring half
+        # Replace the second half of the models with derivatives of the best scoring half
         midpoint: int = len(self.models) // 2
         for i in range(midpoint):
             survior: Model | None = self.models[i]
@@ -170,11 +170,11 @@ class GeneticSimulation:
         if len(self.models) % 2 != 0 and self.models[0] is not None:
             self.models[-1] = self.models[0].reproduce(self.entropy)
 
-        highest_score: float = max(self.scores)
+        best_score: float = min(self.scores)
 
         return (
-            highest_score,
+            best_score,
             statistics.mean(self.scores),
             statistics.median(self.scores),
-            self.scores.index(highest_score),
+            self.scores.index(best_score),
         )
