@@ -194,4 +194,4 @@ def score_room(room: Room, traversal_graph: Graph) -> float:
                 for x, y in raster:
                     grid[x][y] = True
 
-    return 0.0
+    return score

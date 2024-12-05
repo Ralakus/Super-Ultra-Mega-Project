@@ -119,11 +119,11 @@ class GeneticSimulation:
         self.scores = [0.0] * number_of_models
         self.keep_mask = [False] * number_of_models
 
-    def iterate(self) -> tuple[float, float, float]:
+    def iterate(self) -> tuple[float, float, float, int]:
         """Perform one iteration of the simulation.
 
         Returns:
-            tuple[float, float, float]: The highest, average, and median scores
+            tuple[float, float, float, int]: The highest, average, median scores, and index of highest scoring model
         """
         self.iterations += 1
 
@@ -170,4 +170,11 @@ class GeneticSimulation:
         if len(self.models) % 2 != 0 and self.models[0] is not None:
             self.models[-1] = self.models[0].reproduce(self.entropy)
 
-        return (max(self.scores), statistics.mean(self.scores), statistics.median(self.scores))
+        highest_score: float = max(self.scores)
+
+        return (
+            highest_score,
+            statistics.mean(self.scores),
+            statistics.median(self.scores),
+            self.scores.index(highest_score),
+        )
