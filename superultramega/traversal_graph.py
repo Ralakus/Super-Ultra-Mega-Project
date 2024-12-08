@@ -22,5 +22,5 @@ class Graph(BaseModel):
         Returns:
             str: graphviz dot
         """
-        relationships: str = "\n".join(f"\t{path.source} -> {path.target};" for path in self.paths)
-        return f"diagraph D {{\n{relationships}\n}}"
+        relationships: str = "\n".join(f"\t\"{path.source}\" -> \"{path.target}\";" for path in self.paths)
+        return f"digraph D {{\n{relationships}\n}}"
