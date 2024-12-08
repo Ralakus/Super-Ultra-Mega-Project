@@ -4,7 +4,7 @@ import heapq
 import math
 from typing import Final
 
-from .map import Item, Room
+from .map import Item, Orientation, Room
 from .traversal_graph import Graph
 
 VOXEL_RESOLUTION: Final[float] = 2**-4
@@ -155,6 +155,17 @@ def score_room(room: Room, traversal_graph: Graph) -> float:
         lower_bound_y: int = round((item.origin.y - (item.bounds.y / 2)) / VOXEL_RESOLUTION)
         upper_bound_x: int = round((item.origin.x + (item.bounds.x / 2)) / VOXEL_RESOLUTION)
         upper_bound_y: int = round((item.origin.y + (item.bounds.y / 2)) / VOXEL_RESOLUTION)
+
+        if item.orientation == Orientation.VERTICAL:
+            lower_bound_x_temp: int = lower_bound_x
+            lower_bound_y_temp: int = lower_bound_y
+            upper_bound_x_temp: int = upper_bound_x
+            upper_bound_y_temp: int = upper_bound_y
+
+            lower_bound_x = lower_bound_y_temp
+            lower_bound_y = lower_bound_x_temp
+            upper_bound_x = upper_bound_y_temp
+            upper_bound_y = upper_bound_x_temp
 
         item_rasters[item.name] = [
             (x, y) for x in range(lower_bound_x, upper_bound_x) for y in range(lower_bound_y, upper_bound_y)
