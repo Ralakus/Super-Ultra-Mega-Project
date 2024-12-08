@@ -1,8 +1,10 @@
 """Torch model and evolutionary training."""
 
+import multiprocessing
 import statistics
 from copy import deepcopy
-from typing import Final
+from itertools import count, repeat
+from typing import Any, Final
 
 import torch
 from torch import Tensor, nn
@@ -73,6 +75,40 @@ class Model:
         return self.linear_layers[-1](x)
 
 
+def genetic_evaluation(
+    packet: tuple[int, list[Graph], Model | None, Tensor, Room],
+) -> tuple[int, float]:
+    """Run simulation score on room.
+
+    Args:
+        packet (tuple[int, list[Graph], Model | None, Tensor, Room]): input
+
+    Returns:
+        float: score.
+    """
+    index: int
+    traversal_graphs: list[Graph]
+    model: Model | None
+    input_tensor: Tensor
+    output_room: Room
+    index, traversal_graphs, model, input_tensor, output_room = packet
+
+    if model is None:
+        return (index, float("inf"))
+
+    output_room.devectorize(model.forward(input_tensor))
+    for item in output_room.items:
+        item.origin = nudge(output_room, item.name)
+
+    return (
+        index,
+        sum(score_room(output_room, graph) for graph in traversal_graphs)
+        / len(
+            traversal_graphs,
+        ),
+    )
+
+
 class GeneticSimulation:
     """Wrapper to hold simulation state."""
 
@@ -85,6 +121,7 @@ class GeneticSimulation:
     entropy: float
     iterations: int
     room: Room
+    pool: Any
 
     def __init__(
         self,
@@ -119,6 +156,7 @@ class GeneticSimulation:
         self.scores = [0.0] * number_of_models
         self.keep_mask = [False] * number_of_models
         self.iterations = 0
+        self.pool = multiprocessing.Pool()
 
     def iterate(self) -> tuple[float, float, float, int]:
         """Perform one iteration of the simulation.
@@ -128,25 +166,21 @@ class GeneticSimulation:
         """
         self.iterations += 1
 
-        # First pass to score models
-        for i, (model, input_tensor, output_room) in enumerate(
-            zip(
-                self.models,
-                self.input_tensors,
-                self.output_rooms,
-                strict=True,
-            ),
-        ):
-            if model is None:
-                continue
-
-            output_room.devectorize(model.forward(input_tensor))
-            for item in output_room.items:
-                item.origin = nudge(output_room, item.name)
-
-            self.scores[i] = sum(score_room(output_room, graph) for graph in self.traversal_graphs) / len(
-                self.traversal_graphs,
-            )
+        try:
+            for i, score in self.pool.imap(
+                genetic_evaluation,
+                zip(
+                    count(start=0, step=1),
+                    repeat(self.traversal_graphs),
+                    self.models,
+                    self.input_tensors,
+                    self.output_rooms,
+                    strict=False,
+                ),
+            ):
+                self.scores[i] = score
+        except (ValueError, OverflowError):
+            return (0.0, 0.0, 0.0, 0)
 
         # In place sort by scores from least to greatest score
         self.models, self.input_tensors, self.output_rooms, self.scores = zip(
@@ -163,18 +197,12 @@ class GeneticSimulation:
         self.output_rooms = list(self.output_rooms)
         self.scores = list(self.scores)
 
-        # Replace the second half of the models with derivatives of the best scoring half
-        midpoint: int = len(self.models) // 2
-        for i in range(midpoint):
+        for i in range(1, len(self.models)):
             survior: Model | None = self.models[i]
             if survior is None:
                 continue
 
-            self.models[midpoint + i] = survior.reproduce(self.entropy)
-
-        # Replace the lastmost model if there is an odd amount of number of models
-        if len(self.models) % 2 != 0 and self.models[0] is not None:
-            self.models[-1] = self.models[0].reproduce(self.entropy)
+            self.models[i] = survior.reproduce(self.entropy)
 
         best_score: float = min(self.scores)
 

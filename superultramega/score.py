@@ -4,6 +4,7 @@ import heapq
 import math
 from typing import Final
 
+from . import clampi
 from .map import Item, Orientation, Room
 from .traversal_graph import Graph
 
@@ -133,7 +134,7 @@ def a_star(start: tuple[int, int], goal: tuple[int, int], grid: list[list[bool]]
     return []  # Return an empty list if no path is found
 
 
-def score_room(room: Room, traversal_graph: Graph) -> float:
+def score_room(room: Room, traversal_graph: Graph) -> float:  # noqa: PLR0912
     """Scores a room based on how well it is laid out of a traversal graph.
 
     Args:
@@ -151,10 +152,41 @@ def score_room(room: Room, traversal_graph: Graph) -> float:
     item_rasters: dict[str, list[tuple[int, int]]] = {}
 
     for item in room.items:
-        lower_bound_x: int = round((item.origin.x - (item.bounds.x / 2)) / VOXEL_RESOLUTION)
-        lower_bound_y: int = round((item.origin.y - (item.bounds.y / 2)) / VOXEL_RESOLUTION)
-        upper_bound_x: int = round((item.origin.x + (item.bounds.x / 2)) / VOXEL_RESOLUTION)
-        upper_bound_y: int = round((item.origin.y + (item.bounds.y / 2)) / VOXEL_RESOLUTION)
+        try:
+            lower_bound_x: int = clampi(
+                round((item.origin.x - (item.bounds.x / 2)) / VOXEL_RESOLUTION),
+                0,
+                voxel_grid_x - 1,
+            )
+        except (ValueError, OverflowError):
+            lower_bound_x = 0
+
+        try:
+            lower_bound_y: int = clampi(
+                round((item.origin.y - (item.bounds.y / 2)) / VOXEL_RESOLUTION),
+                0,
+                voxel_grid_y - 1,
+            )
+        except (ValueError, OverflowError):
+            lower_bound_y = 0
+
+        try:
+            upper_bound_x: int = clampi(
+                round((item.origin.x + (item.bounds.x / 2)) / VOXEL_RESOLUTION),
+                0,
+                voxel_grid_x - 1,
+            )
+        except (ValueError, OverflowError):
+            upper_bound_x = 0
+
+        try:
+            upper_bound_y: int = clampi(
+                round((item.origin.y + (item.bounds.y / 2)) / VOXEL_RESOLUTION),
+                0,
+                voxel_grid_y - 1,
+            )
+        except (ValueError, OverflowError):
+            upper_bound_y = 0
 
         if item.orientation == Orientation.VERTICAL:
             lower_bound_x_temp: int = lower_bound_x
@@ -175,7 +207,7 @@ def score_room(room: Room, traversal_graph: Graph) -> float:
         for x, y in raster:
             grid[x][y] = True
 
-    score: int = 0
+    score: float = 0
 
     for path in traversal_graph.paths:
         source: Item | None = next((item for item in room.items if item.name == path.source), None)
@@ -190,14 +222,29 @@ def score_room(room: Room, traversal_graph: Graph) -> float:
                 for x, y in raster:
                     grid[x][y] = False
 
-        source_x: int = round(source.origin.x / VOXEL_RESOLUTION)
-        source_y: int = round(source.origin.y / VOXEL_RESOLUTION)
-        target_x: int = round(target.origin.x / VOXEL_RESOLUTION)
-        target_y: int = round(target.origin.y / VOXEL_RESOLUTION)
+        try:
+            source_x: int = clampi(round(source.origin.x / VOXEL_RESOLUTION), 0, voxel_grid_x - 1)
+        except (ValueError, OverflowError):
+            source_x = 0
+
+        try:
+            source_y: int = clampi(round(source.origin.y / VOXEL_RESOLUTION), 0, voxel_grid_y - 1)
+        except (ValueError, OverflowError):
+            source_y = 0
+
+        try:
+            target_x: int = clampi(round(target.origin.x / VOXEL_RESOLUTION), 0, voxel_grid_x - 1)
+        except (ValueError, OverflowError):
+            target_x = 0
+
+        try:
+            target_y: int = clampi(round(target.origin.y / VOXEL_RESOLUTION), 0, voxel_grid_y - 1)
+        except (ValueError, OverflowError):
+            target_y = 0
 
         traversal: list[tuple[int, int]] = a_star((source_x, source_y), (target_x, target_y), grid)
 
-        score += len(traversal)
+        score += float(len(traversal))
 
         # Re-restarter to allow for the next paths to work
         for name, raster in item_rasters.items():

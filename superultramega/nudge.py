@@ -4,7 +4,7 @@ import math
 from copy import deepcopy
 from typing import Final
 
-from . import LoopLimitReachedError, clamp
+from . import LoopLimitReachedError, clampf
 from .map import (
     CoordinatePair,
     Item,
@@ -44,8 +44,8 @@ def nudge(room: Room, item_name: str) -> CoordinatePair:
         return item.origin
 
     # Ensure room is within room bounds
-    item.origin.x = clamp(item.origin.x, 0, room.bounds.x)
-    item.origin.y = clamp(item.origin.y, 0, room.bounds.y)
+    item.origin.x = clampf(item.origin.x, 0, room.bounds.x)
+    item.origin.y = clampf(item.origin.y, 0, room.bounds.y)
 
     coordinates: CoordinatePair = deepcopy(item.origin)
     counter: int = 0
@@ -100,5 +100,9 @@ def nudge(room: Room, item_name: str) -> CoordinatePair:
         counter += 1
         if counter >= MAX_NUDGE_ITERATIONS:
             raise LoopLimitReachedError
+
+    # Ensure room is within room bounds
+    item.origin.x = clampf(item.origin.x, 0, room.bounds.x)
+    item.origin.y = clampf(item.origin.y, 0, room.bounds.y)
 
     return coordinates
