@@ -14,6 +14,14 @@ class CoordinatePair(BaseModel):
     x: float = Field(default=0.0)
     y: float = Field(default=0.0)
 
+    def invert(self) -> None:
+        """Inverts coordinate pair."""
+        x: float = self.x
+        y: float = self.y
+
+        self.x = y
+        self.y = x
+
 
 class PositionConstraint(BaseModel):
     """Contrains object within certain bounds."""
@@ -130,8 +138,6 @@ class Item(BaseModel):
         if self.fixed:
             return
 
-        self.bounds.x = tensor[index + 0].item()
-        self.bounds.y = tensor[index + 1].item()
         self.origin.x = tensor[index + 2].item()
         self.origin.y = tensor[index + 3].item()
         self.orientation = Orientation.HORIZONTAL if tensor[index + 4].item() >= 0 else Orientation.VERTICAL
@@ -211,12 +217,8 @@ def is_item_position_constrained(item: Item, constraint: PositionConstraint) -> 
     Returns:
         bool: if item complies with constraint
     """
-    if item.orientation != Orientation.HORIZONTAL:
-        x = item.bounds.x
-        y = item.bounds.y
-
-        item.bounds.x = y
-        item.bounds.y = x
+    if item.orientation == Orientation.VERTICAL:
+        item.bounds.invert()
 
     item_lower_bound: CoordinatePair = CoordinatePair(
         x=item.origin.x - item.bounds.x / 2,
@@ -235,12 +237,8 @@ def is_item_position_constrained(item: Item, constraint: PositionConstraint) -> 
         item_upper_bound.x >= constraint.upper_bound.x and item_upper_bound.y >= constraint.upper_bound.y
     )
 
-    if item.orientation != Orientation.HORIZONTAL:
-        x = item.bounds.x
-        y = item.bounds.y
-
-        item.bounds.x = y
-        item.bounds.y = x
+    if item.orientation == Orientation.VERTICAL:
+        item.bounds.invert()
 
     return within_lower_bounds and within_upper_bounds
 

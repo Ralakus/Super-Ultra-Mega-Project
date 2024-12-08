@@ -77,7 +77,7 @@ class Model:
 
 def genetic_evaluation(
     packet: tuple[int, list[Graph], Model | None, Tensor, Room],
-) -> tuple[int, float]:
+) -> tuple[int, float, Room]:
     """Run simulation score on room.
 
     Args:
@@ -94,11 +94,11 @@ def genetic_evaluation(
     index, traversal_graphs, model, input_tensor, output_room = packet
 
     if model is None:
-        return (index, float("inf"))
+        return (index, float("inf"), output_room)
 
     output_room.devectorize(model.forward(input_tensor))
     for item in output_room.items:
-        item.origin = nudge(output_room, item.name)
+        nudge(output_room, item.name)
 
     return (
         index,
@@ -106,6 +106,7 @@ def genetic_evaluation(
         / len(
             traversal_graphs,
         ),
+        output_room,
     )
 
 
@@ -123,12 +124,13 @@ class GeneticSimulation:
     room: Room
     pool: Any
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         room: Room,
         entropy: float,
         number_of_models: int,
         model_hidden_layers: int,
+        model_hidden_layer_span_multiplier: int | None,
         traversal_graphs: list[Graph],
     ) -> None:
         """Create new simulation of room.
@@ -138,6 +140,7 @@ class GeneticSimulation:
             entropy (float): starting entropy
             number_of_models (int): number of models to run simulation with
             model_hidden_layers (int): number of hidden layers per model
+            model_hidden_layer_span_multiplier (int): number of parameters in hidden layers relative to span
             traversal_graphs (list[Graph]): traversal graphs to score models
         """
         # Create input tensor from vectorized room data
@@ -145,10 +148,13 @@ class GeneticSimulation:
         input_tensor: Tensor = torch.zeros(span)
         room.vectorize(input_tensor)
 
+        if model_hidden_layer_span_multiplier is None:
+            model_hidden_layer_span_multiplier = HIDDEN_LAYER_SPAN_MULTIPLIER
+
         self.traversal_graphs = traversal_graphs
         self.entropy = entropy
         self.models = [
-            Model(span, span, model_hidden_layers, span * HIDDEN_LAYER_SPAN_MULTIPLIER)
+            Model(span, span, model_hidden_layers, span * model_hidden_layer_span_multiplier)
             for _i in range(number_of_models)
         ]
         self.input_tensors: list[Tensor] = [input_tensor.clone().detach() for _i in range(number_of_models)]
@@ -158,16 +164,16 @@ class GeneticSimulation:
         self.iterations = 0
         self.pool = multiprocessing.Pool()
 
-    def iterate(self) -> tuple[float, float, float, int]:
+    def iterate(self) -> tuple[float, float, float]:
         """Perform one iteration of the simulation.
 
         Returns:
-            tuple[float, float, float, int]: The best, average, median scores, and index of best scoring model
+            tuple[float, float, float]: The best, average, and median scores
         """
         self.iterations += 1
 
         try:
-            for i, score in self.pool.imap(
+            for i, score, output_room in self.pool.imap(
                 genetic_evaluation,
                 zip(
                     count(start=0, step=1),
@@ -179,8 +185,10 @@ class GeneticSimulation:
                 ),
             ):
                 self.scores[i] = score
+                self.output_rooms[i] = output_room
+
         except (ValueError, OverflowError):
-            return (0.0, 0.0, 0.0, 0)
+            return (0.0, 0.0, 0.0)
 
         # In place sort by scores from least to greatest score
         self.models, self.input_tensors, self.output_rooms, self.scores = zip(
@@ -204,11 +212,8 @@ class GeneticSimulation:
 
             self.models[i] = survior.reproduce(self.entropy)
 
-        best_score: float = min(self.scores)
-
         return (
-            best_score,
+            self.scores[0],
             statistics.mean(self.scores),
             statistics.median(self.scores),
-            self.scores.index(best_score),
         )

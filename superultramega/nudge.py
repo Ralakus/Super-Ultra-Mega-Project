@@ -1,13 +1,13 @@
 """Map nudge to fit into constraints."""
 
 import math
-from copy import deepcopy
 from typing import Final
 
 from . import LoopLimitReachedError, clampf
 from .map import (
     CoordinatePair,
     Item,
+    Orientation,
     PositionConstraint,
     RadiusConstraint,
     Room,
@@ -16,14 +16,14 @@ from .map import (
     is_item_radius_constrained,
 )
 
-MAX_NUDGE_ITERATIONS: Final[int] = 2**16
+MAX_NUDGE_ITERATIONS: Final[int] = 2**32
 """Max number of iterations to run to avoid infinite loops."""
 
 NUDGE_DELTA: Final[float] = 2.0**-3
 """Amount to change position by each nudge iteration."""
 
 
-def nudge(room: Room, item_name: str) -> CoordinatePair:
+def nudge(room: Room, item_name: str) -> None:
     """Nudge an item that isn't within constraints to fit into constraints.
 
     Args:
@@ -38,19 +38,33 @@ def nudge(room: Room, item_name: str) -> CoordinatePair:
     """
     item: Item | None = next((item for item in room.items if item.name == item_name), None)
     if item is None:
-        return CoordinatePair(x=0, y=0)
+        return
 
-    if item.fixed or len(item.constraints) == 0:
-        return item.origin
+    if item.fixed:
+        return
+
+    if item.orientation == Orientation.VERTICAL:
+        item.bounds.invert()
 
     # Ensure room is within room bounds
-    item.origin.x = clampf(item.origin.x, 0, room.bounds.x)
-    item.origin.y = clampf(item.origin.y, 0, room.bounds.y)
+    item.origin.x = clampf(item.origin.x, item.bounds.x, room.bounds.x - item.bounds.x)
+    item.origin.y = clampf(item.origin.y, item.bounds.y, room.bounds.y - item.bounds.y)
 
-    coordinates: CoordinatePair = deepcopy(item.origin)
+    if len(item.constraints) == 0:
+        if item.orientation == Orientation.VERTICAL:
+            item.bounds.invert()
+
+        return
+
     counter: int = 0
 
     while not is_item_constrained(item):
+
+        if math.isnan(item.origin.x):
+            item.origin.x = 0.0
+
+        if math.isnan(item.origin.y):
+            item.origin.y = 0.0
 
         delta: CoordinatePair = CoordinatePair(x=0, y=0)
 
@@ -69,14 +83,14 @@ def nudge(room: Room, item_name: str) -> CoordinatePair:
             ),
             key=lambda constraint: math.dist(
                 (constraint.origin.x, constraint.origin.y),
-                (coordinates.x, coordinates.y),
+                (item.origin.x, item.origin.y),
             ),
             default=None,
         )
 
         if target_radius is not None:
-            delta.x += target_radius.origin.x - coordinates.x
-            delta.y += target_radius.origin.y - coordinates.y
+            delta.x += target_radius.origin.x - item.origin.x
+            delta.y += target_radius.origin.y - item.origin.y
 
         overlapping_keep_out_zones: list[PositionConstraint] = [
             constraint for constraint in room.keep_out_zones if is_item_position_constrained(item, constraint)
@@ -88,13 +102,11 @@ def nudge(room: Room, item_name: str) -> CoordinatePair:
                 y=(zone.lower_bound.y + zone.upper_bound.y) / 2,
             )
 
-            delta.x -= position.x - coordinates.x
-            delta.y -= position.y - coordinates.y
+            delta.x -= position.x - item.origin.x
+            delta.y -= position.y - item.origin.y
 
-        coordinates.x += delta.x * NUDGE_DELTA
-        coordinates.y += delta.y * NUDGE_DELTA
-
-        item.origin = coordinates
+        item.origin.x += delta.x * NUDGE_DELTA
+        item.origin.y += delta.y * NUDGE_DELTA
 
         # Failsafe to avoid infinite loops
         counter += 1
@@ -102,7 +114,10 @@ def nudge(room: Room, item_name: str) -> CoordinatePair:
             raise LoopLimitReachedError
 
     # Ensure room is within room bounds
-    item.origin.x = clampf(item.origin.x, 0, room.bounds.x)
-    item.origin.y = clampf(item.origin.y, 0, room.bounds.y)
+    item.origin.x = clampf(item.origin.x, item.bounds.x, room.bounds.x - item.bounds.x)
+    item.origin.y = clampf(item.origin.y, item.bounds.y, room.bounds.y - item.bounds.y)
 
-    return coordinates
+    if item.orientation == Orientation.VERTICAL:
+        item.bounds.invert()
+
+    return

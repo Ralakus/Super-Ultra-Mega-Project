@@ -152,6 +152,9 @@ def score_room(room: Room, traversal_graph: Graph) -> float:  # noqa: C901, PLR0
     item_rasters: dict[str, list[tuple[int, int]]] = {}
 
     for item in room.items:
+        if item.orientation == Orientation.VERTICAL:
+            item.bounds.invert()
+
         try:
             lower_bound_x: int = clampi(
                 round((item.origin.x - (item.bounds.x / 2)) / VOXEL_RESOLUTION),
@@ -189,15 +192,7 @@ def score_room(room: Room, traversal_graph: Graph) -> float:  # noqa: C901, PLR0
             upper_bound_y = 0
 
         if item.orientation == Orientation.VERTICAL:
-            lower_bound_x_temp: int = lower_bound_x
-            lower_bound_y_temp: int = lower_bound_y
-            upper_bound_x_temp: int = upper_bound_x
-            upper_bound_y_temp: int = upper_bound_y
-
-            lower_bound_x = lower_bound_y_temp
-            lower_bound_y = lower_bound_x_temp
-            upper_bound_x = upper_bound_y_temp
-            upper_bound_y = upper_bound_x_temp
+            item.bounds.invert()
 
         item_rasters[item.name] = [
             (x, y) for x in range(lower_bound_x, upper_bound_x) for y in range(lower_bound_y, upper_bound_y)
