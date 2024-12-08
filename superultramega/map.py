@@ -260,6 +260,8 @@ def is_item_constrained(item: Item) -> bool:
     Returns:
         bool: if item complies with constraints
     """
+    if item.fixed:
+        return True
 
     def is_constrained(item: Item, constraint: Constraint) -> bool:
         """Match constraint and checks if item complies.

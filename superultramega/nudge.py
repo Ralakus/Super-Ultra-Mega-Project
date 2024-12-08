@@ -40,6 +40,9 @@ def nudge(room: Room, item_name: str) -> CoordinatePair:
     if item is None:
         return CoordinatePair(x=0, y=0)
 
+    if item.fixed:
+        return item.origin
+
     # Ensure room is within room bounds
     item.origin.x = clamp(item.origin.x, 0, room.bounds.x)
     item.origin.y = clamp(item.origin.y, 0, room.bounds.y)
