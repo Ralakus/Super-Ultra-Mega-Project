@@ -53,7 +53,7 @@ class Model:
         derived_model: Model = deepcopy(self)
 
         for layer in derived_model.linear_layers:
-            layer.weight += torch.rand_like(layer.weight) * entropy
+            layer.weight = nn.Parameter((torch.rand_like(layer.weight) * entropy) + layer.weight)
 
         return derived_model
 
@@ -118,6 +118,7 @@ class GeneticSimulation:
         self.output_rooms = [deepcopy(room) for _i in range(number_of_models)]
         self.scores = [0.0] * number_of_models
         self.keep_mask = [False] * number_of_models
+        self.iterations = 0
 
     def iterate(self) -> tuple[float, float, float, int]:
         """Perform one iteration of the simulation.
@@ -156,6 +157,11 @@ class GeneticSimulation:
             ),
             strict=True,
         )
+
+        self.models = list(self.models)
+        self.input_tensors = list(self.input_tensors)
+        self.output_rooms = list(self.output_rooms)
+        self.scores = list(self.scores)
 
         # Replace the second half of the models with derivatives of the best scoring half
         midpoint: int = len(self.models) // 2

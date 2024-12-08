@@ -2,6 +2,7 @@
 
 import math
 from enum import IntEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 from torch import Tensor
@@ -17,6 +18,7 @@ class CoordinatePair(BaseModel):
 class PositionConstraint(BaseModel):
     """Contrains object within certain bounds."""
 
+    t: Literal["position"] = "position"
     lower_bound: CoordinatePair
     upper_bound: CoordinatePair
 
@@ -24,6 +26,7 @@ class PositionConstraint(BaseModel):
 class RadiusConstraint(BaseModel):
     """Constrains object to a certain distance from point."""
 
+    t: Literal["radius"] = "radius"
     origin: CoordinatePair
     radius: float
 
@@ -138,18 +141,9 @@ class Item(BaseModel):
 
         for constraint in self.constraints:
             if isinstance(constraint, PositionConstraint):
-                constraint.lower_bound.x = tensor[index + 0].item()
-                constraint.lower_bound.y = tensor[index + 1].item()
-                constraint.upper_bound.x = tensor[index + 2].item()
-                constraint.upper_bound.y = tensor[index + 3].item()
-
                 index += 4
 
             if isinstance(constraint, RadiusConstraint):
-                constraint.origin.x = tensor[index + 0].item()
-                constraint.origin.y = tensor[index + 1].item()
-                constraint.radius = tensor[index + 2].item()
-
                 index += 3
 
 
@@ -295,6 +289,5 @@ def is_room_constrained(room: Room) -> bool:
         bool: if all items complies with constraints
     """
     return all(is_item_constrained(item) for item in room.items) and all(
-        all(not is_item_position_constrained(item, keep_out) for item in room.items)
-        for keep_out in room.keep_out_zones
+        all(not is_item_position_constrained(item, keep_out) for item in room.items) for keep_out in room.keep_out_zones
     )

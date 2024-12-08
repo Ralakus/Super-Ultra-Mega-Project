@@ -18,7 +18,7 @@ with Path("graphs.json").open(encoding="utf-8", errors="replace") as graphs_file
     graphs_list: list[dict[str, Any]] = json.load(graphs_file)
     graphs: list[Graph] = [Graph.model_validate(graph_dict) for graph_dict in graphs_list]
 
-simulation: GeneticSimulation = GeneticSimulation(room, 10.0, 100, 250, graphs)
+simulation: GeneticSimulation = GeneticSimulation(room, 2.0, 10, 3, graphs)
 
 highest: float = 0
 highest_scoring_index: int = 0

@@ -1,0 +1,11 @@
+[
+  {
+    "name": "test1",
+    "paths": [
+      { "source": "door", "target": "sink" },
+      { "source": "sink", "target": "cutter" },
+      { "source": "cutter", "target": "table" },
+      { "source": "table", "target": "door" }
+    ]
+  }
+]
