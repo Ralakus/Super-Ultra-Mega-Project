@@ -41,21 +41,24 @@ class Model:
         ]
         self.activation = nn.ReLU()
 
-    def reproduce(self, entropy: float) -> "Model":
-        """Create changed new model from current model.
+    def reproduce(self, entropy: float, other: "Model") -> "Model":
+        """Create changed model from other model.
 
         Args:
             entropy (float): entropy value to adjust parameters.
-                0 will be a direct copy while higher values create more
+                0 will be a direct copy of other while higher values create more
                 variance.
+            other (Model): model to base from
 
         Returns:
             Model: new derived model
         """
-        derived_model: Model = deepcopy(self)
+        derived_model: Model = deepcopy(other)
 
-        for layer in derived_model.linear_layers:
-            layer.weight = nn.Parameter((torch.rand_like(layer.weight) * entropy) + layer.weight)
+        for derived_layer, self_layer in zip(derived_model.linear_layers, self.linear_layers, strict=True):
+            derived_layer.weight = nn.Parameter(
+                derived_layer.weight + ((derived_layer.weight - self_layer.weight) * entropy),
+            )
 
         return derived_model
 
@@ -72,7 +75,9 @@ class Model:
             x = layer(x)
             x = self.activation(x)
 
-        return self.linear_layers[-1](x)
+        x = self.linear_layers[-1](x)
+
+        return nn.functional.normalize(x, dim=0)
 
 
 def genetic_evaluation(
@@ -98,6 +103,11 @@ def genetic_evaluation(
 
     output_room.devectorize(model.forward(input_tensor))
     for item in output_room.items:
+        if not item.fixed:
+            # Move object back into global coordinates from normalized coordinates
+            item.origin.x *= output_room.bounds.x
+            item.origin.y *= output_room.bounds.y
+
         nudge(output_room, item.name)
 
     return (
@@ -114,10 +124,9 @@ class GeneticSimulation:
     """Wrapper to hold simulation state."""
 
     models: list[Model | None]
-    input_tensors: list[Tensor]
+    input_tensor: Tensor
     output_rooms: list[Room]
     scores: list[float]
-    keep_mask: list[bool]
     traversal_graphs: list[Graph]
     entropy: float
     iterations: int
@@ -143,10 +152,15 @@ class GeneticSimulation:
             model_hidden_layer_span_multiplier (int): number of parameters in hidden layers relative to span
             traversal_graphs (list[Graph]): traversal graphs to score models
         """
+        # Ensure at least 4 models are in simulation
+        number_of_models = max(number_of_models, 4)
+
         # Create input tensor from vectorized room data
-        span: int = sum(item.vector_span() for item in room.items)
+        span: int = room.vector_span()
+        devector_span: int = room.devector_span()
         input_tensor: Tensor = torch.zeros(span)
         room.vectorize(input_tensor)
+        self.input_tensor = input_tensor
 
         if model_hidden_layer_span_multiplier is None:
             model_hidden_layer_span_multiplier = HIDDEN_LAYER_SPAN_MULTIPLIER
@@ -154,13 +168,11 @@ class GeneticSimulation:
         self.traversal_graphs = traversal_graphs
         self.entropy = entropy
         self.models = [
-            Model(span, span, model_hidden_layers, span * model_hidden_layer_span_multiplier)
+            Model(span, devector_span, model_hidden_layers, span * model_hidden_layer_span_multiplier)
             for _i in range(number_of_models)
         ]
-        self.input_tensors: list[Tensor] = [input_tensor.clone().detach() for _i in range(number_of_models)]
         self.output_rooms = [deepcopy(room) for _i in range(number_of_models)]
         self.scores = [0.0] * number_of_models
-        self.keep_mask = [False] * number_of_models
         self.iterations = 0
         self.pool = multiprocessing.Pool()
 
@@ -179,7 +191,7 @@ class GeneticSimulation:
                     count(start=0, step=1),
                     repeat(self.traversal_graphs),
                     self.models,
-                    self.input_tensors,
+                    repeat(self.input_tensor),
                     self.output_rooms,
                     strict=False,
                 ),
@@ -191,26 +203,29 @@ class GeneticSimulation:
             return (0.0, 0.0, 0.0)
 
         # In place sort by scores from least to greatest score
-        self.models, self.input_tensors, self.output_rooms, self.scores = zip(
+        self.models, self.output_rooms, self.scores = zip(
             *sorted(
-                zip(self.models, self.input_tensors, self.output_rooms, self.scores, strict=True),
-                key=lambda x: x[3],
+                zip(self.models, self.output_rooms, self.scores, strict=True),
+                key=lambda x: x[2],
                 reverse=False,
             ),
             strict=True,
         )
 
         self.models = list(self.models)
-        self.input_tensors = list(self.input_tensors)
         self.output_rooms = list(self.output_rooms)
         self.scores = list(self.scores)
 
+        # Reproduce models based off of best scoring one.
         for i in range(1, len(self.models)):
             survior: Model | None = self.models[i]
-            if survior is None:
+            if survior is None or self.models[0] is None:
                 continue
 
-            self.models[i] = survior.reproduce(self.entropy)
+            positional_entropy: float = 1.0 + float(i) / float(len(self.models))
+            local_entropy: float = abs(self.scores[i] - self.scores[0]) / self.scores[0]
+
+            self.models[i] = survior.reproduce(self.entropy * positional_entropy * local_entropy, self.models[0])
 
         return (
             self.scores[0],

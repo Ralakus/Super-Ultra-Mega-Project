@@ -2,10 +2,12 @@
 
 import math
 from enum import IntEnum
-from typing import Literal
+from typing import Final, Literal
 
 from pydantic import BaseModel, Field
 from torch import Tensor
+
+FLOATING_POINT_ORIENTATION_THRESHOLD: Final[float] = 0.5
 
 
 class CoordinatePair(BaseModel):
@@ -89,6 +91,24 @@ class Item(BaseModel):
 
         return span
 
+    def devector_span(self) -> int:
+        """Get the devector span of item.
+
+        Fixed items have zero span.
+
+        Returns:
+            int: number of elements in vector
+        """
+        if self.fixed:
+            return 0
+
+        # Span is determined by:
+        # * origin
+        # * orientation
+        span: int = 3
+
+        return span
+
     def vectorize(self, index: int, tensor: Tensor) -> None:
         """Vectorize item at index in tensor.
 
@@ -138,19 +158,13 @@ class Item(BaseModel):
         if self.fixed:
             return
 
-        self.origin.x = tensor[index + 2].item()
-        self.origin.y = tensor[index + 3].item()
-        self.orientation = Orientation.HORIZONTAL if tensor[index + 4].item() >= 0 else Orientation.VERTICAL
-
-        # Offset index to end of header
-        index += 5
-
-        for constraint in self.constraints:
-            if isinstance(constraint, PositionConstraint):
-                index += 4
-
-            if isinstance(constraint, RadiusConstraint):
-                index += 3
+        self.origin.x = tensor[index + 0].item()
+        self.origin.y = tensor[index + 1].item()
+        self.orientation = (
+            Orientation.HORIZONTAL
+            if tensor[index + 2].item() >= FLOATING_POINT_ORIENTATION_THRESHOLD
+            else Orientation.VERTICAL
+        )
 
 
 class Room(BaseModel):
@@ -169,6 +183,14 @@ class Room(BaseModel):
             int: vector span
         """
         return sum(item.vector_span() for item in self.items)
+
+    def devector_span(self) -> int:
+        """Get devector span of entire room.
+
+        Returns:
+            int: vector span
+        """
+        return sum(item.devector_span() for item in self.items)
 
     def vectorize(self, tensor: Tensor) -> None:
         """Vectorize data room into tensor.
@@ -190,7 +212,7 @@ class Room(BaseModel):
         index: int = 0
         for item in self.items:
             item.devectorize(index, tensor)
-            index += item.vector_span()
+            index += item.devector_span()
 
 
 def is_item_radius_constrained(item: Item, constraint: RadiusConstraint) -> bool:

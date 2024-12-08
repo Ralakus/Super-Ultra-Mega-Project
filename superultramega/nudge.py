@@ -16,6 +16,9 @@ from .map import (
     is_item_radius_constrained,
 )
 
+ROOM_WALL_MARGINS: Final[float] = 0.5
+"""How far objects should be from wall."""
+
 MAX_NUDGE_ITERATIONS: Final[int] = 2**32
 """Max number of iterations to run to avoid infinite loops."""
 
@@ -47,8 +50,16 @@ def nudge(room: Room, item_name: str) -> None:
         item.bounds.invert()
 
     # Ensure room is within room bounds
-    item.origin.x = clampf(item.origin.x, item.bounds.x, room.bounds.x - item.bounds.x)
-    item.origin.y = clampf(item.origin.y, item.bounds.y, room.bounds.y - item.bounds.y)
+    item.origin.x = clampf(
+        item.origin.x,
+        ROOM_WALL_MARGINS + (item.bounds.x / 2),
+        room.bounds.x - ROOM_WALL_MARGINS - (item.bounds.x / 2),
+    )
+    item.origin.y = clampf(
+        item.origin.y,
+        ROOM_WALL_MARGINS + (item.bounds.y / 2),
+        room.bounds.y - ROOM_WALL_MARGINS - (item.bounds.y / 2),
+    )
 
     if len(item.constraints) == 0:
         if item.orientation == Orientation.VERTICAL:
@@ -114,8 +125,16 @@ def nudge(room: Room, item_name: str) -> None:
             raise LoopLimitReachedError
 
     # Ensure room is within room bounds
-    item.origin.x = clampf(item.origin.x, item.bounds.x, room.bounds.x - item.bounds.x)
-    item.origin.y = clampf(item.origin.y, item.bounds.y, room.bounds.y - item.bounds.y)
+    item.origin.x = clampf(
+        item.origin.x,
+        ROOM_WALL_MARGINS + (item.bounds.x / 2),
+        room.bounds.x - ROOM_WALL_MARGINS - (item.bounds.x / 2),
+    )
+    item.origin.y = clampf(
+        item.origin.y,
+        ROOM_WALL_MARGINS + (item.bounds.y / 2),
+        room.bounds.y - ROOM_WALL_MARGINS - (item.bounds.y / 2),
+    )
 
     if item.orientation == Orientation.VERTICAL:
         item.bounds.invert()
