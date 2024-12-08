@@ -134,7 +134,7 @@ def a_star(start: tuple[int, int], goal: tuple[int, int], grid: list[list[bool]]
     return []  # Return an empty list if no path is found
 
 
-def score_room(room: Room, traversal_graph: Graph) -> float:  # noqa: PLR0912
+def score_room(room: Room, traversal_graph: Graph) -> float:  # noqa: C901, PLR0912, PLR0915
     """Scores a room based on how well it is laid out of a traversal graph.
 
     Args:
