@@ -59,4 +59,4 @@ with suppress(KeyboardInterrupt):
             print(f"No improvement shown in the past {MAX_UNIMPROVED_ITERATIONS} iterations. Ending simulation.")
             break
 
-print(f"Highest scoring room: {best}", simulation.output_rooms[0].model_dump_json(), sep="\n\n")
+print(f"Best scoring room: {best}", simulation.output_rooms[0].model_dump_json(), sep="\n\n")
