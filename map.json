@@ -1,45 +1,38 @@
 {
-  "bounds": { "x": 15, "y": 15 },
+  "bounds": {"x": 15.0,"y": 15.0},
   "items": [
     {
       "name": "door",
-      "bounds": { "x": 1.0, "y": 1.0 },
-      "origin": { "x": 10.0, "y": 0.5 },
+      "bounds": {"x": 1.0,"y": 1.0},
+      "origin": {"x": 10.0,"y": 0.5},
       "constraints": [],
       "fixed": true,
-      "orientation": "1"
+      "orientation": 1
     },
     {
       "name": "sink",
-      "bounds": { "x": 0.5, "y": 0.5 },
-      "origin": { "x": 0.25, "y": 7.5 },
+      "bounds": {"x": 0.5,"y": 0.5},
+      "origin": {"x": 0.25,"y": 7.5},
       "constraints": [],
       "fixed": true,
-      "orientation": "1"
+      "orientation": 1
     },
     {
       "name": "cutter",
-      "bounds": { "x": 1.0, "y": 1.0 },
-      "origin": { "x": 0.0, "y": 0.0 },
-      "constraints": [
-        { "t": "radius", "origin": { "x": 10.0, "y": 15.0 }, "radius": 1.0 }
-      ],
+      "bounds": {"x": 1.0,"y": 1.0},
+      "origin": {"x": 0.0,"y": 0.0},
+      "constraints": [{"t":"radius","origin": {"x": 10.0,"y": 15.0},"radius": 1.0}],
       "fixed": false,
-      "orientation": "1"
+      "orientation": -1
     },
     {
       "name": "table",
-      "bounds": { "x": 2.0, "y": 0.5 },
-      "origin": { "x": 0.0, "y": 0.0 },
+      "bounds": {"x": 2.0,"y": 0.5},
+      "origin": {"x": 0.0,"y": 0.0},
       "constraints": [],
       "fixed": false,
-      "orientation": "1"
+      "orientation": -1
     }
   ],
-  "keep_out_zones": [
-    {
-      "lower_bound": { "x": 12.5, "y": 0.0 },
-      "upper_bound": { "x": 15.0, "y": 2.5 }
-    }
-  ]
+  "keep_out_zones": [{"t": "position","lower_bound": {"x": 12.5,"y": 0.0},"upper_bound": {"x": 15.0,"y": 2.5}}]
 }

@@ -23,7 +23,14 @@ with Path("graphs.json").open(encoding="utf-8", errors="replace") as graphs_file
     graphs: list[Graph] = [Graph.model_validate(graph_dict) for graph_dict in graphs_list]
 
 print("Preparing simulation...")
-simulation: GeneticSimulation = GeneticSimulation(room, 1.0, 192, 64, 8, graphs)
+simulation: GeneticSimulation = GeneticSimulation(
+    room=room,
+    entropy=1.0,
+    number_of_models=192,
+    model_hidden_layers=64,
+    model_hidden_layer_span_multiplier=8,
+    traversal_graphs=graphs,
+)
 
 unimproved_iterations: int = 0
 previous_best: float = 0

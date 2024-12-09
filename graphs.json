@@ -1,6 +1,6 @@
 [
   {
-    "name": "test1",
+    "name": "test traversal",
     "paths": [
       { "source": "door", "target": "sink" },
       { "source": "sink", "target": "cutter" },
