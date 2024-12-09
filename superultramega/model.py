@@ -89,7 +89,7 @@ def genetic_evaluation(
         packet (tuple[int, list[Graph], Model | None, Tensor, Room]): input
 
     Returns:
-        float: score.
+        tuple[int, float, Room]: dataframe index, score, generated room
     """
     index: int
     traversal_graphs: list[Graph]
