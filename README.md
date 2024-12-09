@@ -33,7 +33,6 @@ Repository for ENGE 1414 project.
 2. Get new position and rotation outputs from each model
 3. If outputs don't comply with constraints, nudge each object to fit into the nearest valid constraint
 4. Score each layout based on traversal graphs
-5. Keep top 25% scoring models and replace the rest of the models with variations of the top 25% models based on an `alpha` value
-6. Write all top scoring outputs to checkpoint directory for this iteration
-7. Decrease `alpha` as score approaches zero
-8. Go to 2
+5. Keep top scoring model and replace the rest of the models with variations of the top model based on an `alpha` value
+6. Write top scoring output to file each iteration
+7. Go to 2
